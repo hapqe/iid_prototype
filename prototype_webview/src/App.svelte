@@ -8,6 +8,8 @@
   import MapScreen from './MapScreen.svelte';
   import ChatScreen from './ChatScreen.svelte';
 
+  let wrapperElement; // Reference for fullscreen target
+
   let currentScreen = 'menu';
   let previousScreen = 'menu';
   let hasEmergencies = false;
@@ -76,6 +78,15 @@
     }
   }
 
+  function handleFirstClick() {
+    if (wrapperElement && !document.fullscreenElement) {
+      wrapperElement.requestFullscreen?.()
+        .catch(err => console.error(`Error enabling fullscreen: ${err.message}`));
+    }
+    // Remove immediately so subsequent clicks don't re-fire fullscreen requests
+    window.removeEventListener('click', handleFirstClick);
+  }
+
   function handleKeyDown(event) {
     if (currentScreen === 'chat') {
       const rawKey = event.key;
@@ -101,7 +112,6 @@
     }
     
     else if (currentScreen === 'menu') { 
-      // REMOVED: Spacebar trigger condition from here
       if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
         if (hasEmergencies && menuSelectedIndex === 0) {
@@ -182,13 +192,14 @@
 
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown); 
+    window.addEventListener('click', handleFirstClick); // Catch first user interaction
+
     socket = new WebSocket('ws://localhost:7777');
 
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
-        // Handle explicit server terminal action
         if (data.type === 'toggleEmergency') {
           triggerEmergencyState();
           return;
@@ -226,13 +237,14 @@
 
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown); 
+    window.removeEventListener('click', handleFirstClick);
     if (socket) {
       socket.close();
     }
   });
 </script>
 
-<div class="screen-layout-wrapper">
+<div bind:this={wrapperElement} class="screen-layout-wrapper">
   <div class="screen-container"> 
     <Header /> 
 
@@ -279,6 +291,14 @@
     position: relative;
     background-color: #000000;
   }
+  
+  /* Fallback layout settings when native fullscreen is active */
+  .screen-layout-wrapper:fullscreen {
+    background-color: #000000;
+    width: 100vw;
+    height: 100vh;
+  }
+
   .screen-container { 
     flex-grow: 1;
     height: 100vh;
