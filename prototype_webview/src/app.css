@@ -1,0 +1,148 @@
+/* ==========================================================================
+   1. GLOBAL RESET & BASE STYLES
+   ========================================================================== */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: #000000;
+    color: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+}
+
+/* Base text elements get default padding if not inside a flexible container */
+p, h1, h2, h3, span:not([class]) {
+    padding-left: 10px;
+    padding-right: 10px;
+}
+
+/* ==========================================================================
+   2. REUSABLE UTILITIES & HELPERS
+   ========================================================================== */
+.text-center {
+    text-align: center;
+}
+
+.bold-text {
+    font-weight: 700;
+}
+
+/* ==========================================================================
+   3. SHARED COMPONENT UI STYLES
+   ========================================================================== */
+
+/* Full-Width UI Banners / Selections */
+.full-width-wrapper {
+    margin-left: -30px;
+    margin-right: -30px;
+    padding-left: 40px; /* Leicht erhöht für besseren Text-Abstand im Button */
+    padding-right: 40px;
+    background-color: transparent;
+    width: calc(100% + 60px);
+    transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+/* Global Selection Highlight State */
+.full-width-wrapper.active-selection,
+.table-row.active-selection {
+    background-color: #72E9F0 !important;
+    color: #000000 !important;
+}
+
+.active-selection strong,
+.active-selection span,
+.active-selection div {
+    color: #000000 !important;
+}
+
+/* General Keyboard Hint */
+.keyboard-hint {
+    font-size: 20px;
+    color: #8E8E93;
+    text-align: center;
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.action-item {
+    width: 100%;
+}
+
+/* ==========================================================================
+   4. GLOBAL SIDEBAR SOFTWARE BUTTONS (FULL VERTICAL HEIGHT)
+   ========================================================================== */
+.global-sidebar-controls {
+    display: flex;
+    flex-direction: column;
+    width: 80px;
+    height: 100vh;
+    position: relative;
+    z-index: 100;
+    border-left: 2px solid #1a2e30;
+}
+
+.software-btn {
+    flex: 1;
+    width: 100%;
+    background-color: #050505;
+    border: none;
+    border-bottom: 1px solid #1a2e30;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.1s ease-in-out;
+}
+
+.software-btn:last-child {
+    border-bottom: none;
+}
+
+.software-btn:hover {
+    background-color: #0c1a1b;
+}
+
+.software-btn:hover .arrow-up {
+    border-bottom-color: #72E9F0;
+}
+
+.software-btn:hover .arrow-down {
+    border-top-color: #72E9F0;
+}
+
+.software-btn:active {
+    background-color: #72E9F0;
+}
+
+.arrow-up, .arrow-down {
+    display: inline-block;
+    width: 0;
+    height: 0;
+    border-left: 14px solid transparent;
+    border-right: 14px solid transparent;
+    transition: border-color 0.1s ease;
+}
+
+.arrow-up {
+    border-bottom: 20px solid #5CE1E6;
+}
+
+.arrow-down {
+    border-top: 20px solid #5CE1E6;
+}
+
+.software-btn:active .arrow-up {
+    border-bottom-color: #000000;
+}
+
+.software-btn:active .arrow-down {
+    border-top-color: #000000;
+}
