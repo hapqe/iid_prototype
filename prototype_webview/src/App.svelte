@@ -13,17 +13,17 @@
   let hasEmergencies = false;
 
   let sandbagCount = 3;
-  let shovelCount = 1; 
-
+  let shovelCount = 1;
   let menuSelectedIndex = 0; 
   let popupSelectedIndex = 0;
   let tasksSelectedIndex = 2;
 
   // Chat state
-  let chatMessages = []; 
-  let currentTypedMessage = ''; // Tracks the active draft
+  let chatMessages = [];
+  let currentTypedMessage = ''; 
 
   let socket;
+
   $: menuItems = hasEmergencies 
     ? [
         { type: 'emergency', title: 'Heavy Labor', details: '500 m from your current locaton', time: '12:34' },
@@ -33,15 +33,12 @@
     : [
         { type: 'nav', title: 'Instruction Manual' },
         { type: 'nav', title: 'Settings' }
-   
     ];
 
   $: totalMenuCount = menuItems.length; 
 
   function navigateUp() {
-    // Disable physical/sidebar navigation buttons if we are chatting
     if (currentScreen === 'chat') return;
-
     if (currentScreen === 'menu') {
       menuSelectedIndex = (menuSelectedIndex - 1 + totalMenuCount) % totalMenuCount;
     } else if (currentScreen === 'popup') {
@@ -54,9 +51,7 @@
   }
 
   function navigateDown() {
-    // Disable physical/sidebar navigation buttons if we are chatting
     if (currentScreen === 'chat') return;
-
     if (currentScreen === 'menu') {
       menuSelectedIndex = (menuSelectedIndex + 1) % totalMenuCount;
     } else if (currentScreen === 'popup') {
@@ -68,26 +63,22 @@
     }
   }
 
+  function triggerEmergencyState() {
+    hasEmergencies = true;
+    popupSelectedIndex = 0;
+    currentScreen = 'popup';
+  }
+
   function sendChatMessage() {
     if (currentTypedMessage.trim() !== '') {
-      // Append the message locally
       chatMessages = [...chatMessages, { author: 'Me', text: currentTypedMessage }];
-      
-      // OPTIONAL: If you need to echo it back to your backend WebSocket server:
-      // if (socket && socket.readyState === WebSocket.OPEN) {
-      //   socket.send(JSON.stringify({ type: 'chatMessage', author: 'Me', text: currentTypedMessage }));
-      // }
-
-      currentTypedMessage = ''; // Clear input line
+      currentTypedMessage = '';
     }
   }
 
   function handleKeyDown(event) {
-    // 1. ISOLATE CHAT MODE: If typing in chat, prevent all navigation shortcuts
     if (currentScreen === 'chat') {
-      // We still look for the original raw Event fields if passed from addEventListener
-      const rawKey = event.key; 
-      
+      const rawKey = event.key;
       if (rawKey === 'Enter') {
         if (event.preventDefault) event.preventDefault();
         sendChatMessage();
@@ -95,11 +86,10 @@
         if (event.preventDefault) event.preventDefault();
         currentTypedMessage = currentTypedMessage.slice(0, -1);
       } else if (rawKey && rawKey.length === 1) {
-        // Appends any single standard character type (letters, symbols, spaces)
         if (event.preventDefault) event.preventDefault();
         currentTypedMessage += event.key;
       }
-      return; // Absolute cutoff. Do not run any layout navigation below.
+      return; 
     }
 
     // --- Standard Navigation Mode ---
@@ -111,12 +101,8 @@
     }
     
     else if (currentScreen === 'menu') { 
-      if (key === ' ' || key === 'spacebar') { 
-        if (event.preventDefault) event.preventDefault();
-        hasEmergencies = true;
-        popupSelectedIndex = 0;
-        currentScreen = 'popup'; 
-      } else if (key === 'd') {
+      // REMOVED: Spacebar trigger condition from here
+      if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
         if (hasEmergencies && menuSelectedIndex === 0) {
           currentScreen = 'tasks';
@@ -196,13 +182,18 @@
 
   onMount(() => {
     window.addEventListener('keydown', handleKeyDown); 
-
     socket = new WebSocket('ws://localhost:7777');
 
     socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
         
+        // Handle explicit server terminal action
+        if (data.type === 'toggleEmergency') {
+          triggerEmergencyState();
+          return;
+        }
+
         if (data.value === 'toggleKeyboard') {
           if (currentScreen !== 'chat') {
             previousScreen = currentScreen; 
@@ -213,15 +204,12 @@
           return; 
         }
 
-        // Remote system incoming messages
         if (currentScreen === 'chat' && data.type === 'chatMessage') {
           chatMessages = [...chatMessages, { author: data.author, text: data.text }];
           return;
         }
 
         const remoteKey = data.value;
-        
-        // Pass the raw text string into handleKeyDown 
         handleKeyDown({ 
           key: remoteKey,
           preventDefault: () => {} 
@@ -256,7 +244,7 @@
       {:else if currentScreen === 'exit-confirmation'}
         <div class="confirmation-screen">
           <div class="confirmation-banner">
-            <p class="confirmation-text">You are trying to exit the emergency. Proceed?</p>
+             <p class="confirmation-text">You are trying to exit the emergency. Proceed?</p>
           </div>
           <div class="keyboard-hint">Slide down Keyboard to chat</div>
         </div>
@@ -283,7 +271,6 @@
 </div>
 
 <style>
-  /* Styles remain unchanged */
   .screen-layout-wrapper {
     display: flex;
     width: 100vw;
