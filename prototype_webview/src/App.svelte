@@ -7,6 +7,7 @@
   import TasksScreen from './TasksScreen.svelte';
   import MapScreen from './MapScreen.svelte';
   import ChatScreen from './ChatScreen.svelte';
+  import SettingsScreen from './SettingsScreen.svelte';
 
   let wrapperElement;
 
@@ -18,7 +19,18 @@
   let menuSelectedIndex = 0;
   let popupSelectedIndex = 0;
   let tasksSelectedIndex = 2;
-
+  let settingsSelectedIndex = 0;
+  
+  // Track physical slide state manually to gate input access
+  let isHardwareKeyboardOpen = false;
+  let settingsData = {
+    firstAid: true,
+    heavyLabor: true,
+    personSearch: true,
+    otherEmergencies: false,
+    name: "Jonathan",
+    ringtone: "Standard"
+  };
   let hasSeenPopup = false;
   let hasSeenDetails = false;
 
@@ -26,8 +38,6 @@
   let currentTypedMessage = '';
 
   let socket;
-
-  // Flashlight state variables
   let videoStream = null;
   let videoTrack = null;
 
@@ -41,13 +51,11 @@
         { type: 'nav', title: 'Instruction Manual' },
         { type: 'nav', title: 'Settings' }
       ];
-
   $: totalMenuCount = menuItems.length;
+  const totalSettingsCount = 6;
 
-  // Flashlight control functions
   async function turnOnFlashlight() {
     try {
-      // Initialize stream if not already active
       if (!videoStream) {
         videoStream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: 'environment' } }
@@ -57,9 +65,7 @@
 
       const capabilities = videoTrack.getCapabilities();
       if ('torch' in capabilities) {
-        await videoTrack.applyConstraints({
-          advanced: [{ torch: true }]
-        });
+        await videoTrack.applyConstraints({ advanced: [{ torch: true }] });
       } else {
         console.warn('Flashlight (torch) is not supported on this device camera.');
       }
@@ -71,9 +77,7 @@
   async function turnOffFlashlight() {
     try {
       if (videoTrack) {
-        await videoTrack.applyConstraints({
-          advanced: [{ torch: false }]
-        });
+        await videoTrack.applyConstraints({ advanced: [{ torch: false }] });
       }
     } catch (err) {
       console.error('Error disabling flashlight:', err);
@@ -88,6 +92,8 @@
       popupSelectedIndex = 0;
     } else if (currentScreen === 'tasks') {
       tasksSelectedIndex = (tasksSelectedIndex - 1 + 3) % 3;
+    } else if (currentScreen === 'settings') {
+      settingsSelectedIndex = (settingsSelectedIndex - 1 + totalSettingsCount) % totalSettingsCount;
     } else if (currentScreen === 'map') {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
     }
@@ -101,6 +107,8 @@
       popupSelectedIndex = 1;
     } else if (currentScreen === 'tasks') {
       tasksSelectedIndex = (tasksSelectedIndex + 1) % 3;
+    } else if (currentScreen === 'settings') {
+      settingsSelectedIndex = (settingsSelectedIndex + 1) % totalSettingsCount;
     } else if (currentScreen === 'map') {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
     }
@@ -129,7 +137,7 @@
     window.removeEventListener('click', handleFirstClick);
   }
 
-  function handleKeyDown(event) {
+  function handleKeyDown(event, isRemote = false) {
     if (currentScreen === 'chat') {
       const rawKey = event.key;
       if (rawKey === 'Enter') {
@@ -140,14 +148,49 @@
         currentTypedMessage = currentTypedMessage.slice(0, -1);
       } else if (rawKey && rawKey.length === 1) {
         if (event.preventDefault) event.preventDefault();
-        currentTypedMessage += event.key;
+        currentTypedMessage += rawKey;
       }
       return;
     }
 
-    const key = event.key.toLowerCase();
+    // Capture text input on settings fields ONLY if the hardware slider is open
+    if (currentScreen === 'settings' && isHardwareKeyboardOpen && (settingsSelectedIndex === 4 || settingsSelectedIndex === 5)) {
+      const rawKey = event.key;
+      const targetField = settingsSelectedIndex === 4 ? 'name' : 'ringtone';
+      
+      // If it is the remote emulated keyboard, it ignores navigation completely and types everything
+      if (isRemote) {
+        if (rawKey === 'Backspace') {
+          if (event.preventDefault) event.preventDefault();
+          settingsData[targetField] = settingsData[targetField].slice(0, -1);
+          return;
+        } else if (rawKey && rawKey.length === 1) {
+          if (event.preventDefault) event.preventDefault();
+          settingsData[targetField] += rawKey;
+          return;
+        }
+      } else {
+        // Native local device keyboard: Pass control/navigation keys through so layout remains responsive
+        if (rawKey !== 'Escape' && rawKey !== 'ArrowUp' && rawKey !== 'ArrowDown' && 
+            rawKey.toLowerCase() !== 'w' && rawKey.toLowerCase() !== 's') {
+          
+          if (rawKey === 'Backspace') {
+            if (event.preventDefault) event.preventDefault();
+            settingsData[targetField] = settingsData[targetField].slice(0, -1);
+          } else if (rawKey && rawKey.length === 1) {
+            if (event.preventDefault) event.preventDefault();
+            settingsData[targetField] += rawKey;
+          }
+          return;
+        }
+      }
+    }
 
-    // Global Flashlight assignments
+    // --- NAVIGATION GUARD ---
+    // Emulated keyboard (isRemote = true) exits early here and cannot perform navigation
+    if (isRemote) return;
+
+    const key = event.key.toLowerCase();
     if (key === 'f') {
       if (event.preventDefault) event.preventDefault();
       turnOnFlashlight();
@@ -158,16 +201,19 @@
       return;
     }
 
-    if (key === 'w') {
+    if (key === 'w' || key === 'arrowup') {
       navigateUp();
-    } else if (key === 's') {
+      return;
+    } else if (key === 's' || key === 'arrowdown') {
       navigateDown();
+      return;
     }
     
-    else if (currentScreen === 'menu') { 
-      if (key === 'd') {
+    if (currentScreen === 'menu') { 
+      if (key === 'd' || key === 'enter') {
         if (event.preventDefault) event.preventDefault();
-        if (hasEmergencies && menuSelectedIndex === 0) {
+        const selectedItem = menuItems[menuSelectedIndex];
+        if (selectedItem?.type === 'emergency') {
           if (hasSeenPopup && hasSeenDetails) {
             currentScreen = 'tasks';
             tasksSelectedIndex = 2;
@@ -175,6 +221,9 @@
             currentScreen = 'popup';
             popupSelectedIndex = 0;
           }
+        } else if (selectedItem?.title === 'Settings') {
+          currentScreen = 'settings';
+          settingsSelectedIndex = 0;
         }
       }
     }
@@ -188,6 +237,20 @@
         if (event.preventDefault) event.preventDefault();
         currentScreen = 'menu'; 
         menuSelectedIndex = 0;
+      }
+    }
+
+    else if (currentScreen === 'settings') {
+      if (key === 'd' || key === 'enter') {
+        if (event.preventDefault) event.preventDefault();
+        if (settingsSelectedIndex === 0) settingsData.firstAid = !settingsData.firstAid;
+        if (settingsSelectedIndex === 1) settingsData.heavyLabor = !settingsData.heavyLabor;
+        if (settingsSelectedIndex === 2) settingsData.personSearch = !settingsData.personSearch;
+        if (settingsSelectedIndex === 3) settingsData.otherEmergencies = !settingsData.otherEmergencies;
+      } else if (key === 'a' || key === 'escape') {
+        if (event.preventDefault) event.preventDefault();
+        currentScreen = 'menu';
+        menuSelectedIndex = hasEmergencies ? 2 : 1;
       }
     }
 
@@ -261,7 +324,7 @@
   }
 
   onMount(() => {
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', (e) => handleKeyDown(e, false));
     window.addEventListener('click', handleFirstClick);
 
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -279,13 +342,18 @@
         }
 
         if (data.value === 'toggleKeyboard') {
+          if (currentScreen === 'settings') {
+            isHardwareKeyboardOpen = !isHardwareKeyboardOpen;
+            return;
+          }
+          
           if (currentScreen !== 'chat') {
             previousScreen = currentScreen;
             currentScreen = 'chat';
           } else {
             currentScreen = previousScreen;
           }
-          return; 
+          return;
         }
 
         if (currentScreen === 'chat' && data.type === 'chatMessage') {
@@ -297,7 +365,7 @@
         handleKeyDown({
           key: remoteKey,
           preventDefault: () => {} 
-        });
+        }, true);
       } catch (err) {
         console.error("Error parsing incoming WebSocket stream data:", err);
       }
@@ -312,7 +380,6 @@
     window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('click', handleFirstClick);
     
-    // Clean up camera/flashlight streams
     if (videoTrack) videoTrack.stop();
     if (videoStream) videoStream.getTracks().forEach(track => track.stop());
     
@@ -324,13 +391,15 @@
 
 <div bind:this={wrapperElement} class="screen-layout-wrapper">
   <div class="screen-container"> 
-    <Header />
+    <Header address="Fritzbergerstraße 12" />
 
     <main class="content">
       {#if currentScreen === 'menu'} 
         <MenuScreen {hasEmergencies} {menuSelectedIndex} {menuItems} />
       {:else if currentScreen === 'popup'} 
         <AlertScreen {popupSelectedIndex} />
+      {:else if currentScreen === 'settings'}
+        <SettingsScreen {settingsSelectedIndex} bind:settingsData />
       {:else if currentScreen === 'exit-confirmation'}
         <div class="confirmation-screen">
           <div class="confirmation-banner">
@@ -382,7 +451,7 @@
     max-width: 600px;
     height: 100vh;
     padding: 15px 15px;
-    display: flex; 
+    display: flex;
     flex-direction: column;
     overflow: hidden;
     box-sizing: border-box;
