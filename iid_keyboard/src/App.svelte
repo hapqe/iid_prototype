@@ -1,8 +1,7 @@
 <script>
   import { onMount, onDestroy } from "svelte";
 
-  // 💡 ACTION REQUIRED: Replace '192.168.1.50' with your server machine's local LAN IP address
-  const SERVER_LAN_IP = "10.0.0.24";
+  const SERVER_LAN_IP = window.location.hostname;
   const BACKEND_HUB_URL = `ws://${SERVER_LAN_IP}:7777?from=3001`;
 
   let wrapperElement; // Reference to bind the main element for fullscreen tracking
