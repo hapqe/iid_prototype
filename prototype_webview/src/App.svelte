@@ -27,6 +27,10 @@
 
   let socket;
 
+  // Flashlight state variables
+  let videoStream = null;
+  let videoTrack = null;
+
   $: menuItems = hasEmergencies
     ? [
         { type: 'emergency', title: 'Heavy Labor', details: '500 m from your current locaton', time: '12:34' },
@@ -39,6 +43,42 @@
       ];
 
   $: totalMenuCount = menuItems.length;
+
+  // Flashlight control functions
+  async function turnOnFlashlight() {
+    try {
+      // Initialize stream if not already active
+      if (!videoStream) {
+        videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }
+        });
+        videoTrack = videoStream.getVideoTracks()[0];
+      }
+
+      const capabilities = videoTrack.getCapabilities();
+      if ('torch' in capabilities) {
+        await videoTrack.applyConstraints({
+          advanced: [{ torch: true }]
+        });
+      } else {
+        console.warn('Flashlight (torch) is not supported on this device camera.');
+      }
+    } catch (err) {
+      console.error('Error enabling flashlight:', err);
+    }
+  }
+
+  async function turnOffFlashlight() {
+    try {
+      if (videoTrack) {
+        await videoTrack.applyConstraints({
+          advanced: [{ torch: false }]
+        });
+      }
+    } catch (err) {
+      console.error('Error disabling flashlight:', err);
+    }
+  }
 
   function navigateUp() {
     if (currentScreen === 'chat') return;
@@ -106,6 +146,18 @@
     }
 
     const key = event.key.toLowerCase();
+
+    // Global Flashlight assignments
+    if (key === 'f') {
+      if (event.preventDefault) event.preventDefault();
+      turnOnFlashlight();
+      return;
+    } else if (key === 'g') {
+      if (event.preventDefault) event.preventDefault();
+      turnOffFlashlight();
+      return;
+    }
+
     if (key === 'w') {
       navigateUp();
     } else if (key === 's') {
@@ -259,6 +311,11 @@
   onDestroy(() => {
     window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('click', handleFirstClick);
+    
+    // Clean up camera/flashlight streams
+    if (videoTrack) videoTrack.stop();
+    if (videoStream) videoStream.getTracks().forEach(track => track.stop());
+    
     if (socket) {
       socket.close();
     }
