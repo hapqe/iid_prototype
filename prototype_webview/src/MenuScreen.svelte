@@ -38,23 +38,23 @@
 
 <style>
     .section-title {
-        font-size: 27px;
+        font-size: 20px; /* Reduced from 27px */
         font-weight: 700;
-        margin: 0 0 25px 0;
+        margin: 0 0 15px 0; /* Reduced margin */
         letter-spacing: -0.5px;
     }
 
     .no-emergencies-text {
-        font-size: 25px;
-        padding: 12px 0;
+        font-size: 16px; /* Reduced from 25px */
+        padding: 8px 0;
         margin-bottom: 10px;
     }
 
     .emergency-list {
-      padding-left: 2rem;
+        padding-left: 1rem; /* Reduced from 2rem */
         display: flex;
         flex-direction: column;
-        margin-bottom: 55px;
+        margin-bottom: 30px; /* Reduced from 55px */
     }
 
     .navigation {
@@ -67,7 +67,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 12px 0px;
+        padding: 10px 0px; /* Reduced padding */
     }
 
     .item-left {
@@ -76,23 +76,23 @@
     }
 
     .item-title {
-        font-size: 25px;
+        font-size: 18px; /* Reduced from 25px */
         font-weight: 700;
         margin-bottom: 4px;
     }
 
     .item-details {
-        font-size: 20px;
+        font-size: 14px; /* Reduced from 20px */
     }
 
     .item-time {
-        font-size: 24px;
+        font-size: 14px; /* Reduced from 24px */
         font-style: italic;
     }
 
     .nav-item {
-        font-size: 26px;
+        font-size: 18px; /* Reduced from 26px */
         font-weight: 700;
-        padding: 14px 0px;
+        padding: 10px 0px; /* Reduced from 14px */
     }
 </style>

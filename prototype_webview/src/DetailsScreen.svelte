@@ -20,9 +20,9 @@
 </div>
 
 <style>
-    .show-tasks {
-        font-size: 1.5rem;
-    }
+  .show-tasks {
+    font-size: 1.1rem; /* Reduced from 1.5rem */
+  }
   .details-screen {
     display: flex;
     flex-direction: column;
@@ -32,11 +32,11 @@
   .details-text-block {
     display: flex;
     flex-direction: column;
-    gap: 40px;
+    gap: 20px; /* Reduced from 40px */
     padding-top: 15px;
   }
   .main-instruction, .location-block {
-    font-size: 26px;
+    font-size: 18px; /* Reduced from 26px */
     font-weight: 700;
     line-height: 1.3;
     margin: 0;
@@ -48,6 +48,6 @@
     margin-bottom: 15px;
   }
   .padded-btn {
-    padding: 18px 0;
+    padding: 12px 0; /* Reduced from 18px */
   }
 </style>

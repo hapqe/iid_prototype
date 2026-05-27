@@ -1,22 +1,19 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy } from "svelte";
 
-  // Dynamic protocol detection to cleanly handle ngrok's secure proxy setup
-  const isSecure = window.location.protocol === 'https:';
-  const WS_PROTOCOL = isSecure ? 'wss://' : 'ws://';
-  const NGROK_WS_URL = `${WS_PROTOCOL}${window.location.host}/ws-hub`;
+  // 💡 ACTION REQUIRED: Replace '192.168.1.50' with your server machine's local LAN IP address
+  const SERVER_LAN_IP = "10.0.0.24";
+  const BACKEND_HUB_URL = `ws://${SERVER_LAN_IP}:7777?from=3001`;
+
+  let wrapperElement; // Reference to bind the main element for fullscreen tracking
 
   let isShift = $state(false);
   let isCaps = $state(false);
-  
-  // Background orientation trackers for toggle checks
   let currentBeta = 0;
   let currentGamma = 0;
-  
   let isUpsideDown = false;
   let socket;
 
-  // Global WebSocket event sender
   function sendEvent(type, value) {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type, value }));
@@ -51,7 +48,8 @@
 
     const absoluteBeta = Math.abs(currentBeta);
     const absoluteGamma = Math.abs(currentGamma);
-    const checkUpsideDown = absoluteBeta > 150 || (absoluteBeta < 30 && absoluteGamma > 75);
+    const checkUpsideDown =
+      absoluteBeta > 150 || (absoluteBeta < 30 && absoluteGamma > 75);
 
     if (checkUpsideDown) {
       if (!isUpsideDown) {
@@ -67,59 +65,94 @@
   }
 
   function setupWebSocket() {
-    socket = new WebSocket(NGROK_WS_URL);
+    if (socket) {
+      socket.onopen = null;
+      socket.onclose = null;
+      socket.onerror = null;
+      socket.close();
+    }
+
+    console.log("🔄 Connecting to local hub routing node:", BACKEND_HUB_URL);
+    socket = new WebSocket(BACKEND_HUB_URL);
 
     socket.onopen = () => {
-      console.log("Successfully bridged into the central server hub!");
+      console.log(
+        "✅ Successfully bridged into the network routing hub via port 3001!",
+      );
     };
 
-    socket.onclose = () => {
-      setTimeout(setupWebSocket, 3000); // Dynamic auto-reconnect cycle
+    socket.onerror = (error) => {
+      console.error("❌ Local connection exception observed:", error);
+    };
+
+    socket.onclose = (event) => {
+      console.log(`🔌 Hub closed (Code: ${event.code}). Retrying in 3s...`);
+      socket = null;
+      setTimeout(setupWebSocket, 3000);
     };
   }
 
   function requestGyroPermission() {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    if (
+      typeof DeviceOrientationEvent !== "undefined" &&
+      typeof DeviceOrientationEvent.requestPermission === "function"
+    ) {
       DeviceOrientationEvent.requestPermission()
-        .then(response => {
-          if (response === 'granted') {
-            window.addEventListener('deviceorientation', handleOrientation);
+        .then((response) => {
+          if (response === "granted") {
+            window.addEventListener("deviceorientation", handleOrientation);
           }
         })
         .catch(console.error);
     } else {
-      window.addEventListener('deviceorientation', handleOrientation);
+      window.addEventListener("deviceorientation", handleOrientation);
     }
+  }
+
+  // Requests browser fullscreen view mode upon user's initial touch interaction 
+  function handleFirstClick() {
+    if (wrapperElement && !document.fullscreenElement) {
+      wrapperElement.requestFullscreen?.()
+        .catch(err => console.error(`Error enabling fullscreen: ${err.message}`));
+    }
+    window.removeEventListener("click", handleFirstClick);
   }
 
   onMount(() => {
     setupWebSocket();
     requestGyroPermission();
+    window.addEventListener("click", handleFirstClick);
   });
 
   onDestroy(() => {
-    window.removeEventListener('deviceorientation', handleOrientation);
+    window.removeEventListener("deviceorientation", handleOrientation);
+    window.removeEventListener("click", handleFirstClick);
     if (socket) socket.close();
   });
 </script>
 
-<main class="fullscreen-keyboard">
-  {#each [
-    ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Backspace"],
-    ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"],
-    ["a", "s", "d", "f", "g", "h", "j", "k", "l", "Enter"],
-    ["Shift", "z", "x", "c", "v", "b", "n", "m", "Caps Lock"],
-    ["Space"]
-  ] as row}
+<main bind:this={wrapperElement} class="fullscreen-keyboard">
+  {#each [["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "Backspace"], ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"], ["a", "s", "d", "f", "g", "h", "j", "k", "l", "Enter"], ["Shift", "z", "x", "c", "v", "b", "n", "m", "Caps Lock"], ["Space"]] as row}
     <div class="row">
       {#each row as key}
-        <button 
+        <button
           type="button"
-          class:active-modifier={(key === 'Shift' && isShift) || (key === 'Caps Lock' && isCaps)}
-          class:wide-key={["Backspace", "Enter", "Shift", "Caps Lock", "Space"].includes(key)}
+          class:active-modifier={(key === "Shift" && isShift) ||
+            (key === "Caps Lock" && isCaps)}
+          class:wide-key={[
+            "Backspace",
+            "Enter",
+            "Shift",
+            "Caps Lock",
+            "Space",
+          ].includes(key)}
           onclick={() => handleKey(key)}
         >
-          {key === "Space" ? "Spacebar" : (isShift || isCaps) && key.length === 1 ? key.toUpperCase() : key}
+          {key === "Space"
+            ? "Spacebar"
+            : (isShift || isCaps) && key.length === 1
+              ? key.toUpperCase()
+              : key}
         </button>
       {/each}
     </div>
@@ -128,63 +161,69 @@
 
 <style>
   :global(html, body, #app) {
-    margin: 0; 
-    padding: 0; 
-    width: 100vw; 
-    height: 100vh; 
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
     overflow: hidden;
-    background-color: #333; 
+    background-color: #333;
     font-family: monospace;
   }
 
-  .fullscreen-keyboard { 
-    display: flex; 
-    flex-direction: column; 
-    width: 100vw; 
-    height: 100vh; 
-    box-sizing: border-box; 
-    padding: 8px; 
-    gap: 8px; 
-    padding-top: 8px; /* Adjusted to sit cleanly at the top boundary */
+  .fullscreen-keyboard {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    box-sizing: border-box;
+    padding: 8px;
+    gap: 8px;
   }
 
-  .row { 
-    display: flex; 
-    flex: 1; 
-    gap: 8px; 
-    width: 100%; 
+  /* Ensures background styling is consistent when the native element goes fullscreen */
+  .fullscreen-keyboard:fullscreen {
+    background-color: #333333;
+    width: 100vw;
+    height: 100vh;
   }
 
-  button { 
-    background-color: #f5f5f5; 
-    color: #333; 
-    border: none; 
-    font-size: 1.5rem; 
-    font-weight: bold; 
-    cursor: pointer; 
-    flex: 1; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    user-select: none; 
-    transition: background 0.1s; 
+  .row {
+    display: flex;
+    flex: 1;
+    gap: 8px;
+    width: 100%;
   }
 
-  button:active { 
-    background-color: #ddd; 
+  button {
+    background-color: #f5f5f5;
+    color: #333;
+    border: none;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+    transition: background 0.1s;
   }
 
-  .wide-key { 
-    flex: 2; 
-    background-color: #e0e0e0; 
+  button:active {
+    background-color: #ddd;
   }
 
-  .row:last-child button { 
-    flex: 1; 
+  .wide-key {
+    flex: 2;
+    background-color: #e0e0e0;
   }
 
-  button.active-modifier { 
-    background-color: #ff3e00; 
-    color: white; 
+  .row:last-child button {
+    flex: 1;
+  }
+
+  button.active-modifier {
+    background-color: #ff3e00;
+    color: white;
   }
 </style>

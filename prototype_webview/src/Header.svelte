@@ -24,10 +24,10 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 50px;
+    margin-bottom: 20px; /* Reduced from 50px */
   }
   .clock {
-    font-size: 54px;
+    font-size: 32px; /* Reduced from 54px */
     color: #5CE1E6;
     letter-spacing: -1px;
     line-height: 1;
@@ -35,14 +35,14 @@
   .header-right {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 10px; /* Reduced from 16px */
   }
   .address {
-    font-size: 26px;
+    font-size: 16px; /* Reduced from 26px */
     color: #5CE1E6;
   }
   .battery-icon {
-    width: 18px;
-    height: 32px;
+    width: 12px; /* Reduced from 18px */
+    height: 22px; /* Reduced from 32px */
   }
 </style>

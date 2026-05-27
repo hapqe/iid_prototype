@@ -38,25 +38,25 @@
     justify-content: space-between;
     flex-grow: 1;
     padding-top: 15px;
-    /* Horizontales Padding entfernt -> Wird jetzt komplett von der app.css übernommen */
   }
 
   .tasks-table {
     display: flex;
     flex-direction: column;
-    gap: 45px; 
-    padding-left: 1rem;
-    padding-right: 1rem;
+    gap: 20px; /* Reduced from 45px */
+    padding-left: 0.5rem; /* Reduced padding */
+    padding-right: 0.5rem;
   }
 
   .table-row {
     display: grid;
-    grid-template-columns: 180px 180px 1fr;
+    /* Grid structure adapted for mobile widths */
+    grid-template-columns: 80px 120px 1fr; 
     align-items: center;
-    font-size: 24px;
-    padding: 16px 30px;
-    margin-left: -30px;
-    margin-right: -30px;
+    font-size: 14px; /* Reduced from 24px */
+    padding: 10px 15px; /* Reduced padding */
+    margin-left: -15px;
+    margin-right: -15px;
     box-sizing: border-box;
     background-color: transparent;
   }
@@ -69,11 +69,11 @@
   }
 
   .action-item {
-    font-size: 24px;
+    font-size: 18px; /* Reduced from 24px */
   }
 
   .padded-btn {
-    padding: 18px 0;
+    padding: 12px 0; /* Reduced from 18px */
   }
 
   .item-name {
@@ -82,5 +82,6 @@
 
   .status-info {
     text-align: right;
+    font-size: 12px; /* Smaller sub-text for fitting */
   }
 </style>

@@ -2,6 +2,7 @@
     import { onMount, onDestroy } from 'svelte';
 
     let currentLocationIndex = 0;
+
     const locations = [
         {
             name: "Location A",
@@ -27,6 +28,7 @@
 
     function handleKeyDown(event) {
         const key = event.key.toLowerCase();
+
         if (key === 'w' || key === 'arrowup' || key === 's' || key === 'arrowdown') {
             event.preventDefault();
             currentLocationIndex = 1 - currentLocationIndex;
@@ -40,6 +42,7 @@
     onDestroy(() => {
         window.removeEventListener('keydown', handleKeyDown);
     });
+
 </script>
 
 <div class="map-screen">
@@ -56,7 +59,7 @@
     </div>
 
     <div class="map-footer">
-        <div class="instruction">Press up/down to toggle map focus</div>
+        <div class="instruction">Press confirm to toggle map focus</div>
         <div class="keyboard-hint">Slide down Keyboard to chat</div>
     </div>
 </div>
@@ -74,7 +77,7 @@
         flex-grow: 1;
         position: relative;
         overflow: hidden;
-        width: 60%;
+        width: 90%; /* Increased from 60% for better mobile fill */
     }
 
     .map-container {
@@ -94,10 +97,10 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 48px;  
-        height: 48px; 
-        margin-left: -24px;  
-        margin-top: -24px;
+        width: 32px;  /* Reduced from 48px */
+        height: 32px; /* Reduced from 48px */
+        margin-left: -16px; /* Updated offset */ 
+        margin-top: -16px; /* Updated offset */
         pointer-events: none;
         z-index: 10;
     }
@@ -112,11 +115,11 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 20px 0;
+        padding: 15px 0; /* Reduced from 20px */
     }
 
     .instruction {
-        font-size: 26px;
-        margin-bottom: 25px;
+        font-size: 16px; /* Reduced from 26px */
+        margin-bottom: 15px; /* Reduced from 25px */
     }
 </style>

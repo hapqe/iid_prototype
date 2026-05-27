@@ -1,6 +1,6 @@
 <script>
   export let messages = [];
-  export let typedMessage = ""; 
+  export let typedMessage = "";
 </script>
 
 <div class="chat-screen">
@@ -35,41 +35,38 @@
   .chat-screen {
     display: flex;
     flex-direction: column;
-    /* Changed from justify-content: space-between to allow 
-       the scroll container to naturally fill up the remaining space */
-    height: 100%; 
+    height: 100%;
     flex-grow: 1;
     color: #ffffff;
     font-family: sans-serif;
-    overflow: hidden; /* Prevent the entire screen layout from stretching */
+    overflow: hidden;
   }
 
   .keyboard-status-hint {
-    font-size: 24px;
+    font-size: 16px; /* Reduced from 24px */
     color: #ffffff;
     margin-top: 10px;
-    margin-bottom: 20px;
-    flex-shrink: 0; /* Ensures the header text never scales down */
+    margin-bottom: 10px; /* Reduced from 20px */
+    flex-shrink: 0;
   }
 
-  /* New scroll container wrapper */
   .chat-log-container {
     flex-grow: 1;
-    overflow-y: auto; /* Adds a scrollbar if there are too many messages */
+    overflow-y: auto;
     display: flex;
     flex-direction: column;
-    justify-content: flex-end; /* Keeps messages aligned to the bottom */
-    padding-bottom: 20px;
+    justify-content: flex-end;
+    padding-bottom: 15px; /* Reduced from 20px */
   }
 
   .chat-log {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 10px; /* Reduced from 20px */
   }
 
   .chat-message {
-    font-size: 26px;
+    font-size: 16px; /* Reduced from 26px */
     line-height: 1.4;
   }
 
@@ -80,15 +77,15 @@
 
   .input-line-container {
     background-color: #ffffff;
-    padding: 16px 24px;
+    padding: 10px 15px; /* Reduced from 16px 24px */
     margin-left: -15px;
-    margin-right: -30px;
-    flex-shrink: 0; /* Prevents the text box from being squished vertically */
+    margin-right: -15px; /* Updated negative margin constraint */
+    flex-shrink: 0;
   }
 
   .typing-indicator {
     color: #000000;
-    font-size: 26px;
+    font-size: 16px; /* Reduced from 26px */
     font-weight: 700;
   }
 

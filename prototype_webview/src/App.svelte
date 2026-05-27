@@ -8,25 +8,26 @@
   import MapScreen from './MapScreen.svelte';
   import ChatScreen from './ChatScreen.svelte';
 
-  let wrapperElement; // Reference for fullscreen target
+  let wrapperElement;
 
   let currentScreen = 'menu';
   let previousScreen = 'menu';
   let hasEmergencies = false;
-
   let sandbagCount = 3;
   let shovelCount = 1;
-  let menuSelectedIndex = 0; 
+  let menuSelectedIndex = 0;
   let popupSelectedIndex = 0;
   let tasksSelectedIndex = 2;
 
-  // Chat state
+  let hasSeenPopup = false;
+  let hasSeenDetails = false;
+
   let chatMessages = [];
-  let currentTypedMessage = ''; 
+  let currentTypedMessage = '';
 
   let socket;
 
-  $: menuItems = hasEmergencies 
+  $: menuItems = hasEmergencies
     ? [
         { type: 'emergency', title: 'Heavy Labor', details: '500 m from your current locaton', time: '12:34' },
         { type: 'nav', title: 'Instruction Manual' },
@@ -35,9 +36,9 @@
     : [
         { type: 'nav', title: 'Instruction Manual' },
         { type: 'nav', title: 'Settings' }
-    ];
+      ];
 
-  $: totalMenuCount = menuItems.length; 
+  $: totalMenuCount = menuItems.length;
 
   function navigateUp() {
     if (currentScreen === 'chat') return;
@@ -68,6 +69,8 @@
   function triggerEmergencyState() {
     hasEmergencies = true;
     popupSelectedIndex = 0;
+    hasSeenPopup = false;
+    hasSeenDetails = false;
     currentScreen = 'popup';
   }
 
@@ -83,7 +86,6 @@
       wrapperElement.requestFullscreen?.()
         .catch(err => console.error(`Error enabling fullscreen: ${err.message}`));
     }
-    // Remove immediately so subsequent clicks don't re-fire fullscreen requests
     window.removeEventListener('click', handleFirstClick);
   }
 
@@ -100,10 +102,9 @@
         if (event.preventDefault) event.preventDefault();
         currentTypedMessage += event.key;
       }
-      return; 
+      return;
     }
 
-    // --- Standard Navigation Mode ---
     const key = event.key.toLowerCase();
     if (key === 'w') {
       navigateUp();
@@ -115,86 +116,106 @@
       if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
         if (hasEmergencies && menuSelectedIndex === 0) {
-          currentScreen = 'tasks';
-          tasksSelectedIndex = 2; 
+          if (hasSeenPopup && hasSeenDetails) {
+            currentScreen = 'tasks';
+            tasksSelectedIndex = 2;
+          } else {
+            currentScreen = 'popup';
+            popupSelectedIndex = 0;
+          }
         }
       }
     }
     
     else if (currentScreen === 'popup') { 
-      if (key === 'd') { 
+      if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
+        hasSeenPopup = true;
         currentScreen = 'details';
-      } else if (key === 'a') { 
+      } else if (key === 'a') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'exit-confirmation'; 
+        currentScreen = 'menu'; 
+        menuSelectedIndex = 0;
       }
     }
 
     else if (currentScreen === 'exit-confirmation') {
       if (key === 'd' || key === ' ' || key === 'spacebar') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'menu'; 
+        currentScreen = 'menu';
         menuSelectedIndex = 0;
       } else if (key === 'a' || key === 'escape') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'popup'; 
+        currentScreen = 'popup';
         popupSelectedIndex = 1;  
       }
     }
     
-    else if (currentScreen === 'details') { 
-      if (key === 'd') { 
+    else if (currentScreen === 'details') {
+      if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'tasks'; 
-        tasksSelectedIndex = 2; 
-      } else if (key === 'a' || key === 'escape') { 
+        hasSeenDetails = true;
+        currentScreen = 'tasks';
+        tasksSelectedIndex = 2;
+      } else if (key === 'a' || key === 'escape') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'menu'; 
-        menuSelectedIndex = 0; 
+        currentScreen = 'popup'; 
+        popupSelectedIndex = 0; 
       }
     }
 
-    else if (currentScreen === 'tasks') { 
-      if (tasksSelectedIndex === 0) { 
+    else if (currentScreen === 'tasks') {
+      if (tasksSelectedIndex === 0) {
         if (key === 'd') sandbagCount += 1;
         if (key === 'a' && sandbagCount > 0) sandbagCount -= 1;
       } 
-      else if (tasksSelectedIndex === 1) { 
+      else if (tasksSelectedIndex === 1) {
         if (key === 'd') shovelCount += 1;
         if (key === 'a' && shovelCount > 0) shovelCount -= 1;
       } 
       
-      else if (tasksSelectedIndex === 2 && key === 'd') { 
-        if (event.preventDefault) event.preventDefault();
-        currentScreen = 'map'; 
+      else if (tasksSelectedIndex === 2) {
+        if (key === 'd') {
+          if (event.preventDefault) event.preventDefault();
+          currentScreen = 'map';
+        } else if (key === 'a') {
+          if (event.preventDefault) event.preventDefault();
+          if (hasSeenPopup && hasSeenDetails) {
+            currentScreen = 'menu';
+            menuSelectedIndex = 0;
+          } else {
+            currentScreen = 'details';
+          }
+        }
       }
       
-      else if (key === 'escape') { 
+      if (key === 'escape') {
         if (event.preventDefault) event.preventDefault();
         currentScreen = 'menu';
         menuSelectedIndex = 0;
       }
     }
 
-    else if (currentScreen === 'map') { 
-        if (key === 'd' || key === ' ' || key === 'spacebar') {
+    else if (currentScreen === 'map') {
+        if (key === 'd') {
             if (event.preventDefault) event.preventDefault();
-            currentScreen = 'menu'; 
-            menuSelectedIndex = 0;
-        } else if (key === 'escape' || key === 'a') { 
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+        } else if (key === 'escape' || key === 'a') {
             if (event.preventDefault) event.preventDefault();
-            currentScreen = 'tasks'; 
-            tasksSelectedIndex = 2; 
+            currentScreen = 'tasks';
+            tasksSelectedIndex = 2;
         }
     }
   }
 
   onMount(() => {
-    window.addEventListener('keydown', handleKeyDown); 
-    window.addEventListener('click', handleFirstClick); // Catch first user interaction
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('click', handleFirstClick);
 
-    socket = new WebSocket('ws://localhost:7777');
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname;
+
+    socket = new WebSocket(`${wsProtocol}//${wsHost}:7777`);
 
     socket.onmessage = (event) => {
       try {
@@ -207,10 +228,10 @@
 
         if (data.value === 'toggleKeyboard') {
           if (currentScreen !== 'chat') {
-            previousScreen = currentScreen; 
+            previousScreen = currentScreen;
             currentScreen = 'chat';
           } else {
-            currentScreen = previousScreen; 
+            currentScreen = previousScreen;
           }
           return; 
         }
@@ -221,7 +242,7 @@
         }
 
         const remoteKey = data.value;
-        handleKeyDown({ 
+        handleKeyDown({
           key: remoteKey,
           preventDefault: () => {} 
         });
@@ -236,7 +257,7 @@
   });
 
   onDestroy(() => {
-    window.removeEventListener('keydown', handleKeyDown); 
+    window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('click', handleFirstClick);
     if (socket) {
       socket.close();
@@ -246,26 +267,26 @@
 
 <div bind:this={wrapperElement} class="screen-layout-wrapper">
   <div class="screen-container"> 
-    <Header /> 
+    <Header />
 
-    <main class="content"> 
+    <main class="content">
       {#if currentScreen === 'menu'} 
-        <MenuScreen {hasEmergencies} {menuSelectedIndex} {menuItems} /> 
+        <MenuScreen {hasEmergencies} {menuSelectedIndex} {menuItems} />
       {:else if currentScreen === 'popup'} 
-        <AlertScreen {popupSelectedIndex} /> 
+        <AlertScreen {popupSelectedIndex} />
       {:else if currentScreen === 'exit-confirmation'}
         <div class="confirmation-screen">
           <div class="confirmation-banner">
-             <p class="confirmation-text">You are trying to exit the emergency. Proceed?</p>
+            <p class="confirmation-text">You are trying to exit the emergency. Proceed?</p>
           </div>
           <div class="keyboard-hint">Slide down Keyboard to chat</div>
         </div>
-      {:else if currentScreen === 'details'} 
-        <DetailsScreen /> 
-      {:else if currentScreen === 'tasks'} 
-        <TasksScreen {tasksSelectedIndex} {sandbagCount} {shovelCount} /> 
-      {:else if currentScreen === 'map'} 
-        <MapScreen /> 
+      {:else if currentScreen === 'details'}
+        <DetailsScreen />
+      {:else if currentScreen === 'tasks'}
+        <TasksScreen {tasksSelectedIndex} {sandbagCount} {shovelCount} />
+      {:else if currentScreen === 'map'}
+        <MapScreen />
       {:else if currentScreen === 'chat'} 
         <ChatScreen messages={chatMessages} typedMessage={currentTypedMessage} />
       {/if}
@@ -285,6 +306,7 @@
 <style>
   .screen-layout-wrapper {
     display: flex;
+    justify-content: center;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
@@ -292,7 +314,6 @@
     background-color: #000000;
   }
   
-  /* Fallback layout settings when native fullscreen is active */
   .screen-layout-wrapper:fullscreen {
     background-color: #000000;
     width: 100vw;
@@ -300,17 +321,24 @@
   }
 
   .screen-container { 
-    flex-grow: 1;
+    width: 100%;
+    max-width: 600px;
     height: 100vh;
-    padding: 35px 30px; 
+    padding: 15px 15px;
     display: flex; 
-    flex-direction: column; 
+    flex-direction: column;
     overflow: hidden;
+    box-sizing: border-box;
   }
+  
   .content { 
     display: flex;
-    flex-direction: column; 
-    flex-grow: 1; 
+    flex-direction: column;
+    flex-grow: 1;
     overflow-y: auto;
+  }
+
+  .confirmation-text {
+    font-size: 18px;
   }
 </style>
