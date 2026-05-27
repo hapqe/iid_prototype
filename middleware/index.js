@@ -39,6 +39,7 @@ const rl = readline.createInterface({
   terminal: false
 });
 
+// Updated terminal action to broadcast an explicit open/trigger flow
 rl.on('line', () => {
   console.log('⚠️ Enter pressed in terminal! Broadcasting emergency trigger...');
   const payload = JSON.stringify({ type: 'toggleEmergency' });
@@ -64,6 +65,7 @@ wss.on('connection', (ws) => {
       const parsedData = JSON.parse(stringMessage);
       console.log('Broadcasting payload:', parsedData);
 
+      // Transparently pipes "openKeyboard", "closeKeyboard", and keys across devices
       for (let client of clients) {
         if (client !== ws && client.readyState === 1) {
           client.send(stringMessage);

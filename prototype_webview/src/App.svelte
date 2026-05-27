@@ -122,6 +122,32 @@
     currentScreen = 'popup';
   }
 
+  // Refactored helper targeting explicit opening events
+  function handleOpenKeyboard() {
+    if (currentScreen === 'settings') {
+      isHardwareKeyboardOpen = true;
+      return;
+    }
+    if (currentScreen !== 'chat') {
+      previousScreen = currentScreen;
+      currentScreen = 'chat';
+    }
+    isHardwareKeyboardOpen = true;
+  }
+
+  // Refactored helper targeting explicit closing events
+  function handleCloseKeyboard() {
+    if (currentScreen === 'settings') {
+      isHardwareKeyboardOpen = false;
+      return;
+    }
+    if (currentScreen === 'chat') {
+      currentScreen = previousScreen;
+    }
+    isHardwareKeyboardOpen = false;
+  }
+
+  // Explicit typing pipeline implementation 
   function sendChatMessage() {
     if (currentTypedMessage.trim() !== '') {
       chatMessages = [...chatMessages, { author: 'Me', text: currentTypedMessage }];
@@ -189,7 +215,6 @@
     // --- NAVIGATION GUARD ---
     // Emulated keyboard (isRemote = true) exits early here and cannot perform navigation
     if (isRemote) return;
-
     const key = event.key.toLowerCase();
     if (key === 'f') {
       if (event.preventDefault) event.preventDefault();
@@ -231,8 +256,12 @@
     else if (currentScreen === 'popup') { 
       if (key === 'd') {
         if (event.preventDefault) event.preventDefault();
-        hasSeenPopup = true;
-        currentScreen = 'details';
+        if (popupSelectedIndex === 0) {
+          hasSeenPopup = true;
+          currentScreen = 'details';
+        } else if (popupSelectedIndex === 1) {
+          currentScreen = 'exit-confirmation';
+        }
       } else if (key === 'a') {
         if (event.preventDefault) event.preventDefault();
         currentScreen = 'menu'; 
@@ -341,18 +370,14 @@
           return;
         }
 
-        if (data.value === 'toggleKeyboard') {
-          if (currentScreen === 'settings') {
-            isHardwareKeyboardOpen = !isHardwareKeyboardOpen;
-            return;
-          }
-          
-          if (currentScreen !== 'chat') {
-            previousScreen = currentScreen;
-            currentScreen = 'chat';
-          } else {
-            currentScreen = previousScreen;
-          }
+        // Processing explicit orientation values routed via the Central ws system hub
+        if (data.value === 'openKeyboard') {
+          handleOpenKeyboard();
+          return;
+        }
+
+        if (data.value === 'closeKeyboard') {
+          handleCloseKeyboard();
           return;
         }
 
@@ -403,7 +428,7 @@
       {:else if currentScreen === 'exit-confirmation'}
         <div class="confirmation-screen">
           <div class="confirmation-banner">
-            <p class="confirmation-text">You are trying to exit the emergency. Proceed?</p>
+            <p class="confirmation-text">You are trying to exit the emergency.<br>Proceed?</p>
           </div>
           <div class="keyboard-hint">Slide down Keyboard to chat</div>
         </div>
@@ -464,7 +489,37 @@
     overflow-y: auto;
   }
 
+  .confirmation-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+  }
+
+  .confirmation-banner {
+    background-color: #80f5ff; /* Cyan banner color */
+    color: #000000; /* Black banner text */
+    width: calc(100% + 30px);
+    margin-left: -15px;
+    padding: 24px 20px;
+    box-sizing: border-box;
+    margin-top: 15px;
+  }
+
   .confirmation-text {
-    font-size: 18px;
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  .keyboard-hint {
+    font-size: 20px;
+    color: #ffffff;
+    margin-top: auto; /* Push down towards keyboard boundary */
+    margin-bottom: 35px;
+    font-weight: 400;
   }
 </style>

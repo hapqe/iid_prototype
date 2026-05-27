@@ -10,7 +10,7 @@
   let isCaps = $state(false);
   let currentBeta = 0;
   let currentGamma = 0;
-  let isUpsideDown = false;
+  let isUpsideDown = false; // Tracks if we are currently in the upside-down state
   let socket;
 
   function sendEvent(type, value) {
@@ -47,18 +47,19 @@
 
     const absoluteBeta = Math.abs(currentBeta);
     const absoluteGamma = Math.abs(currentGamma);
-    const checkUpsideDown =
-      absoluteBeta > 150 || (absoluteBeta < 30 && absoluteGamma > 75);
+    
+    // Explicit condition checking for an upside-down physical layout
+    const checkUpsideDown = absoluteBeta > 150 || (absoluteBeta < 30 && absoluteGamma > 75);
 
     if (checkUpsideDown) {
       if (!isUpsideDown) {
         isUpsideDown = true;
-        sendEvent("gyro", "toggleKeyboard");
+        sendEvent("gyro", "closeKeyboard"); // Fired exactly once when flipping upside down
       }
     } else {
       if (isUpsideDown) {
         isUpsideDown = false;
-        sendEvent("gyro", "toggleKeyboard");
+        sendEvent("gyro", "openKeyboard"); // Fired exactly once when turning back right-side up
       }
     }
   }
@@ -75,9 +76,7 @@
     socket = new WebSocket(BACKEND_HUB_URL);
 
     socket.onopen = () => {
-      console.log(
-        "✅ Successfully bridged into the network routing hub via port 3001!",
-      );
+      console.log("✅ Successfully bridged into the network routing hub via port 3001!");
     };
 
     socket.onerror = (error) => {
@@ -136,15 +135,8 @@
       {#each row as key}
         <button
           type="button"
-          class:active-modifier={(key === "Shift" && isShift) ||
-            (key === "Caps Lock" && isCaps)}
-          class:wide-key={[
-            "Backspace",
-            "Enter",
-            "Shift",
-            "Caps Lock",
-            "Space",
-          ].includes(key)}
+          class:active-modifier={(key === "Shift" && isShift) || (key === "Caps Lock" && isCaps)}
+          class:wide-key={["Backspace", "Enter", "Shift", "Caps Lock", "Space"].includes(key)}
           onclick={() => handleKey(key)}
         >
           {key === "Space"
