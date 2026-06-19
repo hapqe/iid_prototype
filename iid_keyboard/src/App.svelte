@@ -1,8 +1,13 @@
 <script>
   import { onMount, onDestroy } from "svelte";
 
-  const SERVER_LAN_IP = window.location.hostname;
-  const BACKEND_HUB_URL = `ws://${SERVER_LAN_IP}:7777?from=3001`;
+  // Connect to the hub over the SAME origin as the page using a /ws path.
+  // - Locally: Vite proxies /ws -> ws://localhost:7777 (see vite.config.js)
+  // - On the server: nginx proxies /ws -> 127.0.0.1:7777
+  // Using location.host + protocol-aware scheme means it works over both
+  // plain http (ws) and TLS via nginx (wss), with no hardcoded ports/hosts.
+  const WS_PROTOCOL = window.location.protocol === "https:" ? "wss:" : "ws:";
+  const BACKEND_HUB_URL = `${WS_PROTOCOL}//${window.location.host}/ws?from=3001`;
 
   let wrapperElement; // Reference to bind the main element for fullscreen tracking
 

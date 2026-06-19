@@ -356,10 +356,12 @@
     window.addEventListener('keydown', (e) => handleKeyDown(e, false));
     window.addEventListener('click', handleFirstClick);
 
+    // Connect to the hub over the SAME origin as the page using a /ws path.
+    // - Locally: Vite proxies /ws -> ws://localhost:7777 (see vite.config.js)
+    // - On the server: nginx proxies /ws -> 127.0.0.1:7777
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = window.location.hostname;
 
-    socket = new WebSocket(`${wsProtocol}//${wsHost}:7777`);
+    socket = new WebSocket(`${wsProtocol}//${window.location.host}/ws?from=3000`);
 
     socket.onmessage = (event) => {
       try {
