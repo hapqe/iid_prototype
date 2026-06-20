@@ -1,5 +1,7 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import Header from './Header.svelte';
   import MenuScreen from './MenuScreen.svelte';
   import AlertScreen from './AlertScreen.svelte';
@@ -18,8 +20,15 @@
   let shovelCount = 1;
   let menuSelectedIndex = 0;
   let popupSelectedIndex = 0;
-  let tasksSelectedIndex = 2;
+  let tasksSelectedIndex = 0;
   let settingsSelectedIndex = 0;
+
+  // Resource page: when true the up/down keys temporarily change the amount of
+  // the currently selected resource instead of moving the selection.
+  let isAdjustingQuantity = false;
+
+  // Map screen: which point of interest is currently centered (0 = you, 1 = destination)
+  let mapFocusIndex = 0;
   
   // Track physical slide state manually to gate input access
   let isHardwareKeyboardOpen = false;
@@ -29,7 +38,8 @@
     personSearch: true,
     otherEmergencies: false,
     name: "Jonathan",
-    ringtone: "Standard"
+    ringtone: "Standard",
+    brightMode: false
   };
   let hasSeenPopup = false;
   let hasSeenDetails = false;
@@ -52,7 +62,13 @@
         { type: 'nav', title: 'Settings' }
       ];
   $: totalMenuCount = menuItems.length;
-  const totalSettingsCount = 6;
+  const totalSettingsCount = 7;
+
+  // Apply the bright/dark display mode globally by toggling a class on <html>.
+  // Driven by the settings toggle and the global "b" shortcut.
+  $: if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('theme-bright', !!settingsData.brightMode);
+  }
 
   async function turnOnFlashlight() {
     try {
@@ -91,11 +107,17 @@
     } else if (currentScreen === 'popup') {
       popupSelectedIndex = 0;
     } else if (currentScreen === 'tasks') {
-      tasksSelectedIndex = (tasksSelectedIndex - 1 + 3) % 3;
+      if (isAdjustingQuantity) {
+        // In edit mode "up" increases the amount of the selected resource
+        if (tasksSelectedIndex === 0) sandbagCount += 1;
+        else if (tasksSelectedIndex === 1) shovelCount += 1;
+      } else {
+        tasksSelectedIndex = (tasksSelectedIndex - 1 + 3) % 3;
+      }
     } else if (currentScreen === 'settings') {
       settingsSelectedIndex = (settingsSelectedIndex - 1 + totalSettingsCount) % totalSettingsCount;
     } else if (currentScreen === 'map') {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+      mapFocusIndex = (mapFocusIndex + 1) % 2;
     }
   }
 
@@ -106,11 +128,17 @@
     } else if (currentScreen === 'popup') {
       popupSelectedIndex = 1;
     } else if (currentScreen === 'tasks') {
-      tasksSelectedIndex = (tasksSelectedIndex + 1) % 3;
+      if (isAdjustingQuantity) {
+        // In edit mode "down" decreases the amount (clamped at 0)
+        if (tasksSelectedIndex === 0 && sandbagCount > 0) sandbagCount -= 1;
+        else if (tasksSelectedIndex === 1 && shovelCount > 0) shovelCount -= 1;
+      } else {
+        tasksSelectedIndex = (tasksSelectedIndex + 1) % 3;
+      }
     } else if (currentScreen === 'settings') {
       settingsSelectedIndex = (settingsSelectedIndex + 1) % totalSettingsCount;
     } else if (currentScreen === 'map') {
-      window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
+      mapFocusIndex = (mapFocusIndex + 1) % 2;
     }
   }
 
@@ -224,6 +252,11 @@
       if (event.preventDefault) event.preventDefault();
       turnOffFlashlight();
       return;
+    } else if (key === 'b') {
+      // Quick global toggle between dark and bright display mode
+      if (event.preventDefault) event.preventDefault();
+      settingsData.brightMode = !settingsData.brightMode;
+      return;
     }
 
     if (key === 'w' || key === 'arrowup') {
@@ -241,7 +274,8 @@
         if (selectedItem?.type === 'emergency') {
           if (hasSeenPopup && hasSeenDetails) {
             currentScreen = 'tasks';
-            tasksSelectedIndex = 2;
+            tasksSelectedIndex = 0;
+            isAdjustingQuantity = false;
           } else {
             currentScreen = 'popup';
             popupSelectedIndex = 0;
@@ -276,6 +310,7 @@
         if (settingsSelectedIndex === 1) settingsData.heavyLabor = !settingsData.heavyLabor;
         if (settingsSelectedIndex === 2) settingsData.personSearch = !settingsData.personSearch;
         if (settingsSelectedIndex === 3) settingsData.otherEmergencies = !settingsData.otherEmergencies;
+        if (settingsSelectedIndex === 6) settingsData.brightMode = !settingsData.brightMode;
       } else if (key === 'a' || key === 'escape') {
         if (event.preventDefault) event.preventDefault();
         currentScreen = 'menu';
@@ -300,7 +335,8 @@
         if (event.preventDefault) event.preventDefault();
         hasSeenDetails = true;
         currentScreen = 'tasks';
-        tasksSelectedIndex = 2;
+        tasksSelectedIndex = 0;
+        isAdjustingQuantity = false;
       } else if (key === 'a' || key === 'escape') {
         if (event.preventDefault) event.preventDefault();
         currentScreen = 'popup'; 
@@ -309,45 +345,40 @@
     }
 
     else if (currentScreen === 'tasks') {
-      if (tasksSelectedIndex === 0) {
-        if (key === 'd') sandbagCount += 1;
-        if (key === 'a' && sandbagCount > 0) sandbagCount -= 1;
-      } 
-      else if (tasksSelectedIndex === 1) {
-        if (key === 'd') shovelCount += 1;
-        if (key === 'a' && shovelCount > 0) shovelCount -= 1;
-      } 
-      
-      else if (tasksSelectedIndex === 2) {
-        if (key === 'd') {
-          if (event.preventDefault) event.preventDefault();
-          currentScreen = 'map';
-        } else if (key === 'a') {
-          if (event.preventDefault) event.preventDefault();
-          if (hasSeenPopup && hasSeenDetails) {
-            currentScreen = 'menu';
-            menuSelectedIndex = 0;
-          } else {
-            currentScreen = 'details';
-          }
-        }
-      }
-      
-      if (key === 'escape') {
+      if (key === 'd' || key === 'enter') {
         if (event.preventDefault) event.preventDefault();
-        currentScreen = 'menu';
-        menuSelectedIndex = 0;
+        if (tasksSelectedIndex === 0 || tasksSelectedIndex === 1) {
+          // First confirm enters edit mode, second confirm logs the amount in
+          // and returns the up/down keys to normal navigation.
+          isAdjustingQuantity = !isAdjustingQuantity;
+        } else if (tasksSelectedIndex === 2) {
+          isAdjustingQuantity = false;
+          mapFocusIndex = 0;
+          currentScreen = 'map';
+        }
+      } else if (key === 'a' || key === 'escape') {
+        if (event.preventDefault) event.preventDefault();
+        if (isAdjustingQuantity) {
+          // Leave edit mode, keeping the chosen amount
+          isAdjustingQuantity = false;
+        } else if (hasSeenPopup && hasSeenDetails) {
+          currentScreen = 'menu';
+          menuSelectedIndex = 0;
+        } else {
+          currentScreen = 'details';
+        }
       }
     }
 
     else if (currentScreen === 'map') {
-        if (key === 'd') {
+        if (key === 'd' || key === 'enter') {
             if (event.preventDefault) event.preventDefault();
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+            mapFocusIndex = (mapFocusIndex + 1) % 2;
         } else if (key === 'escape' || key === 'a') {
             if (event.preventDefault) event.preventDefault();
             currentScreen = 'tasks';
             tasksSelectedIndex = 2;
+            isAdjustingQuantity = false;
         }
     }
   }
@@ -421,28 +452,32 @@
     <Header address="Fritzbergerstraße 12" />
 
     <main class="content">
-      {#if currentScreen === 'menu'} 
-        <MenuScreen {hasEmergencies} {menuSelectedIndex} {menuItems} />
-      {:else if currentScreen === 'popup'} 
-        <AlertScreen {popupSelectedIndex} />
-      {:else if currentScreen === 'settings'}
-        <SettingsScreen {settingsSelectedIndex} bind:settingsData />
-      {:else if currentScreen === 'exit-confirmation'}
-        <div class="confirmation-screen">
-          <div class="confirmation-banner">
-            <p class="confirmation-text">You are trying to exit the emergency.<br>Proceed?</p>
-          </div>
-          <div class="keyboard-hint">Slide down Keyboard to chat</div>
+      {#key currentScreen}
+        <div class="screen-fade" in:fly={{ y: 12, duration: 200, easing: cubicOut }}>
+          {#if currentScreen === 'menu'} 
+            <MenuScreen {hasEmergencies} {menuSelectedIndex} {menuItems} />
+          {:else if currentScreen === 'popup'} 
+            <AlertScreen {popupSelectedIndex} />
+          {:else if currentScreen === 'settings'}
+            <SettingsScreen {settingsSelectedIndex} bind:settingsData />
+          {:else if currentScreen === 'exit-confirmation'}
+            <div class="confirmation-screen">
+              <div class="confirmation-banner">
+                <p class="confirmation-text">You are trying to exit the emergency.<br>Proceed?</p>
+              </div>
+              <div class="keyboard-hint">Slide down Keyboard to chat</div>
+            </div>
+          {:else if currentScreen === 'details'}
+            <DetailsScreen />
+          {:else if currentScreen === 'tasks'}
+            <TasksScreen {tasksSelectedIndex} {sandbagCount} {shovelCount} {isAdjustingQuantity} />
+          {:else if currentScreen === 'map'}
+            <MapScreen focusIndex={mapFocusIndex} />
+          {:else if currentScreen === 'chat'} 
+            <ChatScreen messages={chatMessages} typedMessage={currentTypedMessage} />
+          {/if}
         </div>
-      {:else if currentScreen === 'details'}
-        <DetailsScreen />
-      {:else if currentScreen === 'tasks'}
-        <TasksScreen {tasksSelectedIndex} {sandbagCount} {shovelCount} />
-      {:else if currentScreen === 'map'}
-        <MapScreen />
-      {:else if currentScreen === 'chat'} 
-        <ChatScreen messages={chatMessages} typedMessage={currentTypedMessage} />
-      {/if}
+      {/key}
     </main>
   </div>
 
@@ -464,11 +499,12 @@
     height: 100vh;
     overflow: hidden;
     position: relative;
-    background-color: #000000;
+    background-color: var(--bg);
+    transition: background-color 0.3s ease;
   }
   
   .screen-layout-wrapper:fullscreen {
-    background-color: #000000;
+    background-color: var(--bg);
     width: 100vw;
     height: 100vh;
   }
@@ -491,23 +527,32 @@
     overflow-y: auto;
   }
 
+  /* Wrapper used for the animated cross-screen transition */
+  .screen-fade {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    min-height: 0;
+  }
+
   .confirmation-screen {
     display: flex;
     flex-direction: column;
     align-items: center;
     height: 100%;
-    color: #ffffff;
+    color: var(--fg);
     font-family: 'Inter', sans-serif;
   }
 
   .confirmation-banner {
-    background-color: #80f5ff; /* Cyan banner color */
-    color: #000000; /* Black banner text */
+    background-color: var(--banner-bg);
+    color: var(--banner-fg);
     width: calc(100% + 30px);
     margin-left: -15px;
     padding: 24px 20px;
     box-sizing: border-box;
     margin-top: 15px;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   .confirmation-text {
@@ -519,7 +564,7 @@
 
   .keyboard-hint {
     font-size: 20px;
-    color: #ffffff;
+    color: var(--fg);
     margin-top: auto; /* Push down towards keyboard boundary */
     margin-bottom: 35px;
     font-weight: 400;

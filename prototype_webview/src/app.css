@@ -1,4 +1,51 @@
 /* ==========================================================================
+   0. THEME TOKENS (Dark default + Bright mode)
+   --------------------------------------------------------------------------
+   The whole UI is driven by these CSS custom properties. Toggling the
+   `.theme-bright` class on <html> swaps the palette so the display stays
+   readable in bright environments (e.g. direct sunlight).
+   ========================================================================== */
+:root {
+    --bg: #000000;
+    --fg: #ffffff;
+    --accent: #5CE1E6;
+    --accent-2: #72E9F0;
+    --selection-bg: #72E9F0;
+    --selection-fg: #000000;
+    --muted: #8E8E93;
+    --input-bg: #ffffff;
+    --input-fg: #000000;
+    --placeholder: #888888;
+    --sidebar-bg: #050505;
+    --sidebar-hover: #0c1a1b;
+    --sidebar-border: #1a2e30;
+    --banner-bg: #80f5ff;
+    --banner-fg: #000000;
+    --surface: #101a1c;
+    --surface-border: #1a2e30;
+}
+
+.theme-bright {
+    --bg: #eef2f4;
+    --fg: #0a1416;
+    --accent: #0b6f78;
+    --accent-2: #0b6f78;
+    --selection-bg: #0b6f78;
+    --selection-fg: #ffffff;
+    --muted: #4b5557;
+    --input-bg: #ffffff;
+    --input-fg: #0a1416;
+    --placeholder: #7a8487;
+    --sidebar-bg: #dde5e7;
+    --sidebar-hover: #c8d4d7;
+    --sidebar-border: #b3c1c4;
+    --banner-bg: #0b6f78;
+    --banner-fg: #ffffff;
+    --surface: #ffffff;
+    --surface-border: #c8d4d7;
+}
+
+/* ==========================================================================
    1. GLOBAL RESET & BASE STYLES
    ========================================================================== */
 *, *::before, *::after {
@@ -7,15 +54,22 @@
     padding: 0;
 }
 
+html {
+    /* Smooth global theme switch */
+    transition: background-color 0.3s ease;
+    background-color: var(--bg);
+}
+
 body {
     margin: 0;
     padding: 0;
-    background-color: #000000;
-    color: #ffffff;
+    background-color: var(--bg);
+    color: var(--fg);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* Base text elements get default padding if not inside a flexible container */
@@ -47,26 +101,27 @@ p, h1, h2, h3, span:not([class]) {
     padding-right: 40px;
     background-color: transparent;
     width: calc(100% + 60px);
-    transition: background-color 0.1s ease, color 0.1s ease;
+    /* Smoother selection feedback for a more natural feel */
+    transition: background-color 0.18s ease, color 0.18s ease, transform 0.18s ease;
 }
 
 /* Global Selection Highlight State */
 .full-width-wrapper.active-selection,
 .table-row.active-selection {
-    background-color: #72E9F0 !important;
-    color: #000000 !important;
+    background-color: var(--selection-bg) !important;
+    color: var(--selection-fg) !important;
 }
 
 .active-selection strong,
 .active-selection span,
 .active-selection div {
-    color: #000000 !important;
+    color: var(--selection-fg) !important;
 }
 
 /* General Keyboard Hint */
 .keyboard-hint {
     font-size: 20px;
-    color: #8E8E93;
+    color: var(--muted);
     text-align: center;
     margin-top: auto;
     padding-top: 20px;
@@ -86,20 +141,20 @@ p, h1, h2, h3, span:not([class]) {
     height: 100vh;
     position: relative;
     z-index: 100;
-    border-left: 2px solid #1a2e30;
+    border-left: 2px solid var(--sidebar-border);
 }
 
 .software-btn {
     flex: 1;
     width: 100%;
-    background-color: #050505;
+    background-color: var(--sidebar-bg);
     border: none;
-    border-bottom: 1px solid #1a2e30;
+    border-bottom: 1px solid var(--sidebar-border);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.1s ease-in-out;
+    transition: all 0.15s ease-in-out;
 }
 
 .software-btn:last-child {
@@ -107,19 +162,20 @@ p, h1, h2, h3, span:not([class]) {
 }
 
 .software-btn:hover {
-    background-color: #0c1a1b;
+    background-color: var(--sidebar-hover);
 }
 
 .software-btn:hover .arrow-up {
-    border-bottom-color: #72E9F0;
+    border-bottom-color: var(--accent-2);
 }
 
 .software-btn:hover .arrow-down {
-    border-top-color: #72E9F0;
+    border-top-color: var(--accent-2);
 }
 
 .software-btn:active {
-    background-color: #72E9F0;
+    background-color: var(--accent-2);
+    transform: scale(0.97);
 }
 
 .arrow-up, .arrow-down {
@@ -128,21 +184,21 @@ p, h1, h2, h3, span:not([class]) {
     height: 0;
     border-left: 14px solid transparent;
     border-right: 14px solid transparent;
-    transition: border-color 0.1s ease;
+    transition: border-color 0.15s ease;
 }
 
 .arrow-up {
-    border-bottom: 20px solid #5CE1E6;
+    border-bottom: 20px solid var(--accent);
 }
 
 .arrow-down {
-    border-top: 20px solid #5CE1E6;
+    border-top: 20px solid var(--accent);
 }
 
 .software-btn:active .arrow-up {
-    border-bottom-color: #000000;
+    border-bottom-color: var(--selection-fg);
 }
 
 .software-btn:active .arrow-down {
-    border-top-color: #000000;
+    border-top-color: var(--selection-fg);
 }

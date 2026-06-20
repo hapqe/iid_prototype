@@ -6,7 +6,8 @@
     personSearch: true,
     otherEmergencies: false,
     name: "Jonathan",
-    ringtone: "Standard"
+    ringtone: "Standard",
+    brightMode: false
   };
 
   // 1. Create an array to hold references to the DOM elements
@@ -93,6 +94,20 @@
       </div>
     </div>
   </div>
+
+  <div class="settings-group">
+    <h3 class="group-title">Display</h3>
+
+    <div
+      bind:this={elements[6]}
+      class="full-width-wrapper {settingsSelectedIndex === 6 ? 'active-selection' : ''}"
+    >
+      <div class="setting-row">
+        <span>Bright mode</span>
+        <span class="value-text">{settingsData.brightMode ? 'on' : 'off'}</span>
+      </div>
+    </div>
+  </div>
 </div>
 
 <style>
@@ -100,7 +115,7 @@
     display: flex;
     flex-direction: column;
     flex-grow: 1;
-    color: #ffffff;
+    color: var(--fg);
     font-family: sans-serif;
     
     /* Crucial change: Ensure the container can scroll if content overflows */
@@ -116,7 +131,7 @@
     font-size: 18px;
     font-weight: 700;
     margin: 10px 0;
-    color: #ffffff;
+    color: var(--fg);
   }
 
   .setting-row {
@@ -141,7 +156,7 @@
 
   .cursor {
     display: none;
-    color: #5CE1E6;
+    color: var(--accent);
     margin-left: 2px;
     animation: blink 1s infinite;
   }

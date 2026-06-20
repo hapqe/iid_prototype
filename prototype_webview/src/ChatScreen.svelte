@@ -37,14 +37,14 @@
     flex-direction: column;
     height: 100%;
     flex-grow: 1;
-    color: #ffffff;
+    color: var(--fg);
     font-family: sans-serif;
     overflow: hidden;
   }
 
   .keyboard-status-hint {
     font-size: 16px; /* Reduced from 24px */
-    color: #ffffff;
+    color: var(--fg);
     margin-top: 10px;
     margin-bottom: 10px; /* Reduced from 20px */
     flex-shrink: 0;
@@ -76,21 +76,22 @@
   }
 
   .input-line-container {
-    background-color: #ffffff;
+    background-color: var(--input-bg);
     padding: 10px 15px; /* Reduced from 16px 24px */
     margin-left: -15px;
     margin-right: -15px; /* Updated negative margin constraint */
     flex-shrink: 0;
+    transition: background-color 0.3s ease;
   }
 
   .typing-indicator {
-    color: #000000;
+    color: var(--input-fg);
     font-size: 16px; /* Reduced from 26px */
     font-weight: 700;
   }
 
   .placeholder {
-    color: #888888;
+    color: var(--placeholder);
     font-weight: 400;
     font-style: italic;
   }
