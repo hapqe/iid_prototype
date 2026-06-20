@@ -29,15 +29,47 @@ function broadcastEmergency() {
 // HTTP fallback: trigger the emergency screen even when there is no interactive
 // terminal attached (e.g. running under tmux/pm2/systemd, or from another SSH
 // session). From the server you can simply run:  curl localhost:7777/trigger
-app.all('/trigger', (req, res) => {
+// Visiting https://trigger.iid.hapke.me/ (via nginx) also hits this route.
+function handleTriggerRequest(req, res) {
   broadcastEmergency();
-  res.json({ ok: true, devices: clients.size });
-});
+  const payload = { ok: true, devices: clients.size };
+
+  const wantsJson = req.query.format === 'json'
+    || req.get('accept')?.includes('application/json');
+
+  if (req.method === 'GET' && !wantsJson) {
+    res.type('html').send(`<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notfall ausgelöst</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #1a1a1a; color: #f5f5f5; }
+    main { text-align: center; padding: 2rem; }
+    h1 { color: #ff3e00; margin-bottom: 0.5rem; }
+    p { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Notfall ausgelöst</h1>
+    <p>Signal an ${payload.devices} verbundene${payload.devices === 1 ? 's' : ''} Gerät${payload.devices === 1 ? '' : 'e'} gesendet.</p>
+  </main>
+</body>
+</html>`);
+    return;
+  }
+
+  res.json(payload);
+}
+
+app.all('/trigger', handleTriggerRequest);
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 WebSocket Hub running on http://localhost:${PORT}`);
   console.log(`💡 Press ENTER in this terminal to trigger the emergency screen!`);
-  console.log(`   (or from anywhere on the server: curl localhost:${PORT}/trigger)`);
+  console.log(`   (or: curl localhost:${PORT}/trigger  |  open https://trigger.iid.hapke.me/)`);
 });
 
 // HARDENED WEBSOCKET CONFIGURATION FOR REVERSE PROXIES
