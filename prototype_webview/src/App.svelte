@@ -150,6 +150,17 @@
     currentScreen = 'popup';
   }
 
+  function cancelEmergencyState() {
+    hasEmergencies = false;
+    popupSelectedIndex = 0;
+    hasSeenPopup = false;
+    hasSeenDetails = false;
+    currentScreen = 'menu';
+    menuSelectedIndex = 0;
+    tasksSelectedIndex = 0;
+    isAdjustingQuantity = false;
+  }
+
   // Refactored helper targeting explicit opening events
   function handleOpenKeyboard() {
     if (currentScreen === 'settings') {
@@ -404,7 +415,7 @@
         }
 
         if (data.type === 'cancelEmergency') {
-          window.location.reload();
+          cancelEmergencyState();
           return;
         }
 
