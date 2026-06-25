@@ -403,6 +403,11 @@
           return;
         }
 
+        if (data.type === 'cancelEmergency') {
+          window.location.reload();
+          return;
+        }
+
         // Processing explicit orientation values routed via the Central ws system hub
         if (data.value === 'openKeyboard') {
           handleOpenKeyboard();
