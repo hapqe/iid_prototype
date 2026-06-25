@@ -27,53 +27,53 @@ function broadcastEmergency() {
 }
 
 // Broadcasting cancel emergency which triggers a page refresh on all client screens.
-function broadcastCancel() {
-  console.log('🔄 Broadcasting cancel emergency (client refresh)...');
-  const payload = JSON.stringify({ type: 'cancelEmergency' });
-  for (let client of clients) {
-    if (client.readyState === 1) client.send(payload);
-  }
-}
-
 // HTTP fallback: trigger the emergency screen even when there is no interactive
 // terminal attached (e.g. running under tmux/pm2/systemd, or from another SSH
 // session).
 // Visiting https://trigger.iid.hapke.me/ (via nginx) also hits this route.
 function handleTriggerRequest(req, res) {
-  let action = req.query.action || req.body?.action;
-
-  if (action === 'start') {
-    broadcastEmergency();
-    return res.json({ ok: true, action: 'start', devices: clients.size });
-  } else if (action === 'cancel') {
-    broadcastCancel();
-    return res.json({ ok: true, action: 'cancel', devices: clients.size });
-  }
-
-  // If action was passed via request query but not in a API-like format,
-  // we redirect back to /trigger after performing the action.
-  if (action) {
-    if (action === 'start') broadcastEmergency();
-    if (action === 'cancel') broadcastCancel();
-
-    const wantsJson = req.query.format === 'json'
-      || req.get('accept')?.includes('application/json');
-
-    if (wantsJson) {
-      return res.json({ ok: true, action, devices: clients.size });
-    }
-    return res.redirect('/trigger');
-  }
-
   const wantsJson = req.query.format === 'json'
     || req.get('accept')?.includes('application/json');
 
-  if (wantsJson) {
-    return res.json({ ok: true, devices: clients.size });
+  const isCurl = req.headers['user-agent']?.includes('curl');
+
+  // Trigger the emergency if the action is explicitly requested via GET query parameter,
+  // or if it's a programmatic JSON request, or if it's a curl call.
+  if (req.query.action === 'fire' || wantsJson || isCurl) {
+    broadcastEmergency();
+    const payload = { ok: true, devices: clients.size };
+
+    if (!wantsJson && !isCurl) {
+      res.type('html').send(`<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Notfall ausgelöst</title>
+  <style>
+    body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #1a1a1a; color: #f5f5f5; }
+    main { text-align: center; padding: 2rem; }
+    h1 { color: #ff3e00; margin-bottom: 0.5rem; }
+    p { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Notfall ausgelöst</h1>
+    <p>Signal an ${payload.devices} verbundene${payload.devices === 1 ? 's' : ''} Gerät${payload.devices === 1 ? '' : 'e'} gesendet.</p>
+  </main>
+</body>
+</html>`);
+      return;
+    }
+
+    return res.json(payload);
   }
 
+  // Otherwise, render the control panel page with the trigger button.
+  // The button performs a GET request to the exact same page but with `?action=fire` appended.
   res.type('html').send(`<!DOCTYPE html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -91,11 +91,6 @@ function handleTriggerRequest(req, res) {
       --primary: #ff4a5a;
       --primary-hover: #ff606e;
       --primary-glow: rgba(255, 74, 90, 0.15);
-      --secondary: #3b82f6;
-      --secondary-hover: #60a5fa;
-      --secondary-glow: rgba(59, 130, 246, 0.15);
-      --neutral: #374151;
-      --neutral-hover: #4b5563;
       --success: #10b981;
     }
     
@@ -163,7 +158,6 @@ function handleTriggerRequest(req, res) {
       font-weight: 600;
       color: var(--text);
       margin-bottom: 2.5rem;
-      transition: all 0.3s ease;
     }
 
     .status-dot {
@@ -181,13 +175,12 @@ function handleTriggerRequest(req, res) {
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
-    .button-group {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
     .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      box-sizing: border-box;
       font-family: inherit;
       font-size: 1rem;
       font-weight: 700;
@@ -196,72 +189,20 @@ function handleTriggerRequest(req, res) {
       border-radius: 16px;
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-
-    .btn-start {
+      text-decoration: none;
       background: linear-gradient(135deg, var(--primary) 0%, #e11d48 100%);
       color: white;
       box-shadow: 0 4px 15px var(--primary-glow);
     }
 
-    .btn-start:hover {
+    .btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 25px var(--primary-glow);
       filter: brightness(1.1);
     }
 
-    .btn-start:active {
+    .btn:active {
       transform: translateY(0);
-    }
-
-    .btn-cancel {
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      border: 1px solid rgba(255, 255, 255, 0.05);
-    }
-
-    .btn-cancel:hover {
-      background: rgba(255, 255, 255, 0.12);
-      transform: translateY(-2px);
-    }
-
-    .btn-cancel:active {
-      transform: translateY(0);
-    }
-
-    /* Notification/Toast styling */
-    .toast {
-      position: fixed;
-      bottom: 2rem;
-      left: 50%;
-      transform: translate(-50%, 100px);
-      background: rgba(17, 24, 39, 0.95);
-      border: 1px solid var(--card-border);
-      padding: 1rem 1.5rem;
-      border-radius: 16px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-      z-index: 100;
-      pointer-events: none;
-    }
-
-    .toast.show {
-      transform: translate(-50%, 0);
-    }
-
-    .toast-icon {
-      font-size: 1.25rem;
     }
   </style>
 </head>
@@ -273,72 +214,19 @@ function handleTriggerRequest(req, res) {
       
       <div class="status-badge">
         <span class="status-dot"></span>
-        <span id="device-count">${clients.size} verbundene(s) Gerät(e)</span>
+        <span>${clients.size} verbundene(s) Gerät(e)</span>
       </div>
 
-      <div class="button-group">
-        <button class="btn btn-start" onclick="triggerAction('start')">
-          ⚠️ Notfall starten
-        </button>
-        <button class="btn btn-cancel" onclick="triggerAction('cancel')">
-          🔄 Notfall abbrechen
-        </button>
-      </div>
+      <a class="btn" href="?action=fire">
+        ⚠️ Notfall starten
+      </a>
     </div>
   </div>
-
-  <div id="toast" class="toast">
-    <span id="toast-icon" class="toast-icon"></span>
-    <span id="toast-message"></span>
-  </div>
-
-  <script>
-    async function triggerAction(action) {
-      try {
-        const res = await fetch('', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ action })
-        });
-        const data = await res.json();
-        
-        if (data.ok) {
-          // Update device count
-          document.getElementById('device-count').textContent = 
-            data.devices + ' verbundene(s) Gerät(e)';
-          
-          showToast(
-            action === 'start' ? '⚠️' : '🔄', 
-            action === 'start' ? 'Notfall Signal gesendet!' : 'Notfall abgebrochen & Client neu geladen!'
-          );
-        } else {
-          showToast('❌', 'Fehler beim Ausführen der Aktion');
-        }
-      } catch (err) {
-        showToast('❌', 'Netzwerk- oder Serverfehler');
-        console.error(err);
-      }
-    }
-
-    function showToast(icon, message) {
-      const toast = document.getElementById('toast');
-      document.getElementById('toast-icon').textContent = icon;
-      document.getElementById('toast-message').textContent = message;
-      
-      toast.classList.add('show');
-      setTimeout(() => {
-        toast.classList.remove('show');
-      }, 3000);
-    }
-  </script>
 </body>
 </html>`);
 }
 
 app.all('/trigger', handleTriggerRequest);
-app.post('/', handleTriggerRequest);
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 WebSocket Hub running on http://localhost:${PORT}`);
