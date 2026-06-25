@@ -212,7 +212,7 @@
         padding: 12px 8px;
         font-size: 17px;
         font-weight: 700;
-        border-radius: 8px;
+        border-radius: 0;
         border: 1px solid var(--surface-border);
         color: var(--fg);
         background-color: transparent;
