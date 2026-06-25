@@ -27,6 +27,14 @@ function broadcastEmergency() {
 }
 
 // Broadcasting cancel emergency which triggers a page refresh on all client screens.
+function broadcastCancel() {
+  console.log('🔄 Broadcasting cancel emergency (client refresh)...');
+  const payload = JSON.stringify({ type: 'cancelEmergency' });
+  for (let client of clients) {
+    if (client.readyState === 1) client.send(payload);
+  }
+}
+
 // HTTP fallback: trigger the emergency screen even when there is no interactive
 // terminal attached (e.g. running under tmux/pm2/systemd, or from another SSH
 // session).
@@ -37,41 +45,31 @@ function handleTriggerRequest(req, res) {
 
   const isCurl = req.headers['user-agent']?.includes('curl');
 
-  // Trigger the emergency if the action is explicitly requested via GET query parameter,
-  // or if it's a programmatic JSON request, or if it's a curl call.
-  if (req.query.action === 'fire' || wantsJson || isCurl) {
+  const action = req.query.action;
+
+  if (action === 'fire') {
     broadcastEmergency();
-    const payload = { ok: true, devices: clients.size };
-
-    if (!wantsJson && !isCurl) {
-      res.type('html').send(`<!DOCTYPE html>
-<html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Notfall ausgelöst</title>
-  <style>
-    body { font-family: system-ui, sans-serif; display: grid; place-items: center; min-height: 100vh; margin: 0; background: #1a1a1a; color: #f5f5f5; }
-    main { text-align: center; padding: 2rem; }
-    h1 { color: #ff3e00; margin-bottom: 0.5rem; }
-    p { opacity: 0.85; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Notfall ausgelöst</h1>
-    <p>Signal an ${payload.devices} verbundene${payload.devices === 1 ? 's' : ''} Gerät${payload.devices === 1 ? '' : 'e'} gesendet.</p>
-  </main>
-</body>
-</html>`);
-      return;
+    if (wantsJson || isCurl) {
+      return res.json({ ok: true, action: 'fire', devices: clients.size });
     }
-
-    return res.json(payload);
+    return res.redirect(req.header('Referer') || '/trigger');
   }
 
-  // Otherwise, render the control panel page with the trigger button.
-  // The button performs a GET request to the exact same page but with `?action=fire` appended.
+  if (action === 'reset') {
+    broadcastCancel();
+    if (wantsJson || isCurl) {
+      return res.json({ ok: true, action: 'reset', devices: clients.size });
+    }
+    return res.redirect(req.header('Referer') || '/trigger');
+  }
+
+  // Programmatic access without explicit action can trigger directly for backward-compatibility if JSON or curl
+  if (wantsJson || isCurl) {
+    broadcastEmergency();
+    return res.json({ ok: true, action: 'fire', devices: clients.size });
+  }
+
+  // Otherwise, render the control panel page with the trigger & reset buttons.
   res.type('html').send(`<!DOCTYPE html>
 <html lang="de">
 <head>
@@ -175,6 +173,12 @@ function handleTriggerRequest(req, res) {
       100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
     .btn {
       display: flex;
       align-items: center;
@@ -190,18 +194,36 @@ function handleTriggerRequest(req, res) {
       cursor: pointer;
       transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       text-decoration: none;
+    }
+
+    .btn-fire {
       background: linear-gradient(135deg, var(--primary) 0%, #e11d48 100%);
       color: white;
       box-shadow: 0 4px 15px var(--primary-glow);
     }
 
-    .btn:hover {
+    .btn-fire:hover {
       transform: translateY(-2px);
       box-shadow: 0 8px 25px var(--primary-glow);
       filter: brightness(1.1);
     }
 
-    .btn:active {
+    .btn-fire:active {
+      transform: translateY(0);
+    }
+
+    .btn-reset {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .btn-reset:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .btn-reset:active {
       transform: translateY(0);
     }
   </style>
@@ -217,9 +239,14 @@ function handleTriggerRequest(req, res) {
         <span>${clients.size} verbundene(s) Gerät(e)</span>
       </div>
 
-      <a class="btn" href="?action=fire">
-        ⚠️ Notfall starten
-      </a>
+      <div class="button-group">
+        <a class="btn btn-fire" href="?action=fire">
+          ⚠️ Notfall starten
+        </a>
+        <a class="btn btn-reset" href="?action=reset">
+          🔄 System zurücksetzen
+        </a>
+      </div>
     </div>
   </div>
 </body>
