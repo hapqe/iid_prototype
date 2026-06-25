@@ -295,7 +295,7 @@ function handleTriggerRequest(req, res) {
   <script>
     async function triggerAction(action) {
       try {
-        const res = await fetch('/trigger', {
+        const res = await fetch('', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -338,6 +338,7 @@ function handleTriggerRequest(req, res) {
 }
 
 app.all('/trigger', handleTriggerRequest);
+app.post('/', handleTriggerRequest);
 
 const server = app.listen(PORT, () => {
   console.log(`🚀 WebSocket Hub running on http://localhost:${PORT}`);
